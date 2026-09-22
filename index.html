@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Local Typing Tutor</title>
+  <style>
+    :root {
+      --bg-color: #f4f6f8;
+      --card-bg: #ffffff;
+      --primary: #2563eb;
+      --correct: #16a34a;
+      --incorrect: #dc2626;
+      --current: #bfdbfe;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color);
+      color: #333;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .container {
+      max-width: 900px;
+      width: 100%;
+      background: var(--card-bg);
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    h1 { margin-top: 0; text-align: center; color: #1e293b; }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+
+    select, button {
+      padding: 8px 14px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    /* Stats Dashboard */
+    .stats {
+      display: flex;
+      justify-content: space-around;
+      background: #f8fafc;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .stat-box { text-align: center; }
+    .stat-box .value { font-size: 24px; font-weight: bold; color: var(--primary); }
+    .stat-box .label { font-size: 12px; color: #64748b; text-transform: uppercase; }
+
+    /* Typing Text Box */
+    .text-display {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 22px;
+      line-height: 1.6;
+      padding: 20px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      min-height: 80px;
+      letter-spacing: 2px;
+      word-break: break-all;
+      margin-bottom: 25px;
+    }
+
+    .char { border-radius: 2px; }
+    .char.correct { background-color: #bbf7d0; color: var(--correct); }
+    .char.incorrect { background-color: #fecaca; color: var(--incorrect); }
+    .char.current { background-color: var(--current); border-bottom: 2px solid var(--primary); }
+
+    /* On-Screen Keyboard */
+    .keyboard {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: center;
+      user-select: none;
+    }
+
+    .row { display: flex; gap: 6px; }
+
+    .key {
+      width: 45px;
+      height: 45px;
+      background: #e2e8f0;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #334155;
+      transition: background 0.1s;
+    }
+
+    .key.space { width: 250px; }
+    .key.active { background: var(--primary); color: #fff; }
+    .key.target { background: #fde047; color: #000; animation: pulse 1s infinite; }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Local Keyboarding Tutor</h1>
+
+  <div class="controls">
+    <label>Select Lesson:
+      <select id="lessonSelect">
+        <option value="asdfgf ;lkjhj a s d f g f ; l k j h j asdfgf ;lkjhj asdfgf ;lkjhj asdfgf ;lkjhj a s d f g f ; l k j h j">Lesson 1: chapter 1</option>
+        <option value="qwertr poiuyu q w e r t r p o i u y u qwertr poiuyu qwertr poiuyu qwertr poiuyu q w e r t r p o i u y u ">Lesson 2: chapter 2</option>
+        <option value="zxcvbv ,mnbn z x c v b v , m n b n zxcvbv ,mnbn zxcvbv ,mnbn zxcvbv ,mnbn z x c v b v , m n b n ">Lesson 3: chapter 3</option>
+        <option value="asdfgf;lkjhj qwertrpoiuyu zxcvbv ,mnbn asdfgf;lkjhj qwertrpoiuyu zxcvbv ,mnbn asdfgf;lkjhj qwertrpoiuyu zxcvbv ,mnbn">Lesson 4: chapter 4</option>
+        <option value="the quick brown fox jumps over the lazy dog">Lesson 5: Full Sentence</option>
+      </select>
+    </label>
+    <button id="resetBtn">Restart</button>
+  </div>
+
+  <div class="stats">
+    <div class="stat-box"><div class="value" id="wpm">0</div><div class="label">WPM</div></div>
+    <div class="stat-box"><div class="value" id="accuracy">100%</div><div class="label">Accuracy</div></div>
+    <div class="stat-box"><div class="value" id="errors">0</div><div class="label">Errors</div></div>
+  </div>
+
+  <div class="text-display" id="textDisplay"></div>
+
+  <div class="keyboard" id="keyboard"></div>
+</div>
+
+<script>
+  const lessons = {
+    0: "asdfgf ;lkjhj a s d f g f ; l k j h j",
+    1: "qwertr poiuyu q w e r t r p o i u y u",
+    2: "zxcvbv ,mnbn z x c v b v , m n b n ",
+    3: "asdfgf;lkjhj qwertrpoiuyu zxcvbv ,mnbn",
+    4: "the quick brown fox jumps over the lazy dog"
+  };
+
+  const keyboardLayout = [
+    ["q","w","e","r","t","y","u","i","o","p"],
+    ["a","s","d","f","g","h","j","k","l",";"],
+    ["z","x","c","v","b","n","m"],
+    ["Space"]
+  ];
+
+  let currentText = "";
+  let currentIndex = 0;
+  let errorCount = 0;
+  let totalTyped = 0;
+  let startTime = null;
+  let timerInterval = null;
+
+  const textDisplay = document.getElementById("textDisplay");
+  const lessonSelect = document.getElementById("lessonSelect");
+  const resetBtn = document.getElementById("resetBtn");
+  const keyboardEl = document.getElementById("keyboard");
+
+  // Render Virtual Keyboard
+  function renderKeyboard() {
+    keyboardEl.innerHTML = "";
+    keyboardLayout.forEach(row => {
+      const rowEl = document.createElement("div");
+      rowEl.className = "row";
+      row.forEach(key => {
+        const keyEl = document.createElement("div");
+        keyEl.className = "key " + (key === "Space" ? "space" : "");
+        keyEl.id = `key-${key.toLowerCase()}`;
+        keyEl.textContent = key === "Space" ? "Space" : key.toUpperCase();
+        rowEl.appendChild(keyEl);
+      });
+      keyboardEl.appendChild(rowEl);
+    });
+  }
+
+  // Load selected lesson
+  function loadLesson() {
+    currentText = lessonSelect.value;
+    currentIndex = 0;
+    errorCount = 0;
+    totalTyped = 0;
+    startTime = null;
+    clearInterval(timerInterval);
+
+    document.getElementById("wpm").textContent = "0";
+    document.getElementById("accuracy").textContent = "100%";
+    document.getElementById("errors").textContent = "0";
+
+    renderText();
+    highlightTargetKey();
+  }
+
+  // Display characters with state styles
+  function renderText() {
+    textDisplay.innerHTML = "";
+    currentText.split("").forEach((char, index) => {
+      const span = document.createElement("span");
+      span.className = "char";
+      span.textContent = char;
+
+      if (index === currentIndex) span.classList.add("current");
+      textDisplay.appendChild(span);
+    });
+  }
+
+  // Highlight next key to press
+  function highlightTargetKey() {
+    document.querySelectorAll(".key").forEach(k => k.classList.remove("target"));
+    if (currentIndex < currentText.length) {
+      let char = currentText[currentIndex].toLowerCase();
+      if (char === " ") char = "space";
+      const targetKey = document.getElementById(`key-${char}`);
+      if (targetKey) targetKey.classList.add("target");
+    }
+  }
+
+  // Key press handling logic
+  window.addEventListener("keydown", (e) => {
+    // Ignore meta/control keys
+    if (e.key.length > 1 && e.key !== "Backspace" && e.key !== " ") return;
+
+    if (!startTime) {
+      startTime = new Date();
+      timerInterval = setInterval(updateStats, 500);
+    }
+
+    const targetChar = currentText[currentIndex];
+
+    // Highlight active key visually
+    let activeKeyId = e.key.toLowerCase();
+    if (e.key === " ") activeKeyId = "space";
+    const activeKeyEl = document.getElementById(`key-${activeKeyId}`);
+    if (activeKeyEl) {
+      activeKeyEl.classList.add("active");
+      setTimeout(() => activeKeyEl.classList.remove("active"), 150);
+    }
+
+    if (e.key === targetChar) {
+      const chars = textDisplay.children;
+      chars[currentIndex].classList.remove("current");
+      chars[currentIndex].classList.add("correct");
+      currentIndex++;
+      totalTyped++;
+
+      if (currentIndex < currentText.length) {
+        chars[currentIndex].classList.add("current");
+      } else {
+        clearInterval(timerInterval);
+        updateStats();
+      }
+    } else {
+      if (currentIndex < currentText.length) {
+        const chars = textDisplay.children;
+        chars[currentIndex].classList.add("incorrect");
+        errorCount++;
+        totalTyped++;
+      }
+    }
+
+    document.getElementById("errors").textContent = errorCount;
+    highlightTargetKey();
+  });
+
+  function updateStats() {
+    if (!startTime || totalTyped === 0) return;
+    
+    const timeElapsedMinutes = (new Date() - startTime) / 60000;
+    // Standard WPM = (characters typed / 5) / minutes
+    const wpm = Math.round((currentIndex / 5) / timeElapsedMinutes) || 0;
+    const accuracy = Math.max(0, Math.round(((totalTyped - errorCount) / totalTyped) * 100));
+
+    document.getElementById("wpm").textContent = wpm;
+    document.getElementById("accuracy").textContent = `${accuracy}%`;
+  }
+
+  lessonSelect.addEventListener("change", loadLesson);
+  resetBtn.addEventListener("click", loadLesson);
+
+  // Initialize
+  renderKeyboard();
+  loadLesson();
+</script>
+</body>
+</html>
